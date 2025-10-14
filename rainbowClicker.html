@@ -1,6 +1,8 @@
+<!-- for upgrades changes go to line 330 -->
 <!DOCTYPE html>
 <html>
     <head>
+        <title>Rainbow Clicker ULTIMATE</title>
         <style>
             body {
             background-color: rgb(23,20,23);
@@ -329,9 +331,13 @@
                 { id: 8, cpc_change: 500, cps_change: 0, text: '500 cpc_0 cps', cost: t('450k'), multiplier: 1.234, factory: false },
                 { id: 9, cpc_change: 0, cps_change: 500, text: '0 cpc_500 cps', cost: t('500k'), multiplier: 1.234, factory: false },
                 { id: 10, cpc_change: 750, cps_change: 750, text: '750 cpc_750 cps', cost: t('2m'), multiplier: 1.502, factory: false },
-                { id: 12, cpc_change: t('1'), cps_change: t('0'), text: '1 cpc/s_0 cps/s', cost: t('7.5m'), multiplier: 1.462, factory: true },
-                { id: 13, cpc_change: t('0'), cps_change: t('1'), text: '0 cpc/s_1 cps/s', cost: t('10m'), multiplier: 1.562, factory: true }
-
+                { id: 12, cpc_change: 1, cps_change: 0, text: '1 cpc/s_0 cps/s', cost: t('7.5m'), multiplier: 1.462, factory: true },
+                { id: 13, cpc_change: 0, cps_change: 1, text: '0 cpc/s_1 cps/s', cost: t('10m'), multiplier: 1.562, factory: true },
+                { id: 14, cpc_change: 5, cps_change: 0, text: '5 cpc/s_0 cps/s', cost: t('15m'), multiplier: 1.279, factory: true },
+                { id: 15, cpc_change: 15, cps_change: 0, text: '15 cpc/s_0 cps/s', cost: t('35m'), multiplier: 1.479, factory: true },
+                { id: 16, cpc_change: 0, cps_change: 25, text: '0 cpc/s_25 cps/s', cost: t('50m'), multiplier: 1.524, factory: true },
+                { id: 17, cpc_change: 50, cps_change: 50, text: '50 cps/s_50 cpc/s', cost: t('250m'), multiplier: 1.623, factory: true },
+                { id: 18, cpc_change: 85, cps_change: 10, text: '85 cpc/s_10 cpss/', cost: t('1b'), multiplier: 1.234, factory: true }
             ];
             // Track how many of each upgrade has been purchased
             let purchasedUpgrades = {};
