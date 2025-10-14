@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+            background-color: rgb(23,20,23);
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            }
+            
+            #splash-screen {
+                position: fixed;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+                transition: opacity 0.5s;
+            }
+            
+            #play-button {
+                width: 200px;
+                height: 200px;
+                border-radius: 50%;
+                background: linear-gradient(145deg, #ff3366, #ff6633);
+                border: none;
+                color: white;
+                font-size: 48px;
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+                transition: transform 0.2s, box-shadow 0.2s;
+                margin-bottom: 30px;
+            }
+            
+            #play-button:hover, #fullscreen-button:hover {
+                transform: scale(1.05);
+                box-shadow: 0 15px 25px rgba(0,0,0,0.4);
+            }
+            
+            #play-button:active, #fullscreen-button:active {
+                transform: scale(0.95);
+                box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+            }
+            
+            #loading-bar-container {
+                width: 80%;
+                max-width: 500px;
+                height: 30px;
+                background-color: #333;
+                border-radius: 15px;
+                overflow: hidden;
+                display: none;
+            }
+            
+            #loading-bar {
+                width: 0%;
+                height: 100%;
+                background: linear-gradient(90deg, #ff3366, #ff6633);
+                border-radius: 15px;
+                transition: width 0.1s;
+            }
+            
+            #game-container {
+                position: fixed;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.5s;
+            }
+            
+            /* Custom draggable slider */
+            .dragArea {
+                position: absolute;
+                width: 10px;
+                height: 100vh; /* Full screen height */
+                background-color: #444;
+                border-radius: 5px;
+                top: 0; /* From top of screen */
+                bottom: 0; /* To bottom of screen */
+                right: 260px; /* 75px away from upgrades (which are at right: 10px, width: 170px) */
+                cursor: pointer;
+            }
+            
+            .dragger {
+                position: absolute;
+                width: 30px;
+                height: 30px;
+                background: linear-gradient(145deg, #ff3333, #cc0000);
+                border-radius: 50%; /* Perfect circle */
+                right: 250px; /* Centered on the dragArea */
+                transform: translateY(-50%);
+                cursor: grab;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                user-select: none;
+                z-index: 10;
+            }
+            
+            .dragger:active {
+                cursor: grabbing;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            }
+            
+            /* Value display */
+            .slider-value {
+                position: absolute;
+                right: 295px;
+                color: white;
+                font-weight: bold;
+                transform: translateY(-50%);
+            }
+            /* click button */
+            #clickBTN {
+            width: 0px;
+            height: 0px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 0;
+            overflow: hidden;
+            border: none;
+            border-radius: 10px;
+            }
+            #clickIMG {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            }
+            /* click counters */
+            #clickCounter {
+            color: whitesmoke;
+            position: absolute;
+            top: 5%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            }
+            #clicksPerClick {
+            color: whitesmoke;
+            position: absolute;
+            top: 15%;
+            left: 30%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            }
+            #clicksPerSecond {
+            color: whitesmoke;
+            position: absolute;
+            top: 15%;
+            left: 70%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            }
+            /* example for js algorithm */
+            .upgrade-button {
+            position: absolute;
+            right: 10px;
+            width: 150px;
+            height: 150px; /* Same height as original button */
+            padding: 10px; /* 10px padding all around */
+            background-color: rgb(128,148,235);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-sizing: border-box; /* Include padding in width/height calculation */
+            }
+            
+            /* Font size classes that will be applied dynamically */
+            .text-xl { font-size: 40px; }
+            .text-lg { font-size: 32px; }
+            .text-md { font-size: 24px; }
+            .text-sm { font-size: 18px; }
+            .text-xs { font-size: 14px; }
+            
+            .upgrade-cost {
+            position: absolute;
+            right: 180px;
+            color: whitesmoke;
+            font-size: 16px;
+            }
+            
+            #upgrade-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 170px; /* Button width + some margin */
+            transition: transform 0.1s ease; /* Smooth transition for the movement */
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Splash screen with play button -->
+        <div id="splash-screen">
+            <button id="play-button">PLAY</button>
+            <div id="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+            <button id="fullscreen-button" style="position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: linear-gradient(145deg, #333, #111); border: none; color: white; padding: 25px 50px; border-radius: 15px; font-weight: bold; font-size: 24px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">
+                <span style="display: inline-block; margin-right: 15px; font-size: 30px;">⛶</span> FULLSCREEN
+            </button>
+        </div>
+        
+        <!-- Game container (initially hidden) -->
+        <div id="game-container">
+            <!-- Save data display textarea in upper-left corner -->
+            <textarea id="saveDataDisplay" style="position: absolute; top: 10px; left: 10px; width: 400px; height: 100px; background-color: black; color: whitesmoke; font-family: monospace; resize: none; border: 1px solid #444; padding: 10px; font-size: 14px; opacity: 0.9; z-index: 100;">Save data will appear here</textarea>
+            
+            <!-- click button --> 
+            <button id='clickBTN'><img id='clickIMG' src='https://img.freepik.com/premium-photo/rainbow-gradient-png-square-badge-sticker-transparent-background_53876-1004536.jpg?semt=ais_hybrid&w=740&q=80'></button>
+            <!-- upgrade buttons container -->
+            <div id='upgrade-container'></div>
+            <!-- click counter's --> 
+            <h1 id='clickCounter'>clicks: 0</h1>
+            <h1 id='clicksPerClick'>cpc: 1</h1>
+            <h1 id='clicksPerSecond'>cps: 0</h1>
+            
+            <!-- Save/Load buttons (Bottom Left) -->
+            <div style="position: absolute; bottom: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px;">
+                <button id="saveButton" style="padding: 8px 15px; background: linear-gradient(145deg, #33ff66, #00cc33); border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer;">SAVE GAME</button>
+                <button id="loadButton" style="padding: 8px 15px; background: linear-gradient(145deg, #3366ff, #0033cc); border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer;">LOAD GAME</button>
+                <button id="resetButton" style="padding: 8px 15px; background: linear-gradient(145deg, #ff3333, #cc0000); border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer;">RESET</button>
+                <button id="debugButton" style="padding: 8px 15px; background: linear-gradient(145deg, #ff9933, #cc6600); border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer;">DEBUG</button>
+            </div>
+            
+            <!-- Vertical slider control -->
+            <div class="dragArea" id="dragArea"></div>
+            <div class="dragger" id="dragger"></div>
+            <div class="slider-value" id="sliderValue">0</div>
+        </div>
+        <script>
+            // let's
+            let clicks = 0;
+
+            let cpc = 1;
+            let cps = 0;
+
+            let cpcPERsec = 0;
+            let cpsPERsec = 0;
+            // config
+            const btnSize = 250;
+            const sliderMultiplier = 5; // This is the multiplier for the dragger position value (y*sliderMultiplier)
+            
+            // Define a shared suffixes object to be used by both t() and formatNumber functions
+            const NUMBER_SUFFIXES = {
+                '': 1,
+                'K': 1e3,
+                'M': 1e6,
+                'B': 1e9,
+                'T': 1e12,
+                'Q': 1e15,
+                'QI': 1e18,
+                'SX': 1e21,
+                'SP': 1e24,
+                'OC': 1e27,
+                'NO': 1e30,
+                'DC': 1e33
+            };
+            
+            // Map of lowercase suffix letters to their full suffix
+            const SUFFIX_MAP = {
+                'k': 'K',
+                'm': 'M',
+                'b': 'B',
+                't': 'T',
+                'q': 'Q'
+            };
+            
+            // Developer utility function to easily input large numbers
+            function t(input) {
+                // Handle direct number inputs
+                if (typeof input === 'number') {
+                    return input;
+                }
+                
+                // Convert to string if not already
+                const str = input.toString().trim();
+                
+                // Regular expression to match number + optional suffix
+                // Matches patterns like "100", "1.5k", "2.5M", "10b", etc.
+                const regex = /^(\d+(\.\d+)?)([kmbtqQKMBT]?)$/i;
+                const match = str.match(regex);
+                
+                if (!match) {
+                    console.error(`Invalid number format: ${input}`);
+                    return 0;
+                }
+                
+                const number = parseFloat(match[1]);
+                const suffix = match[3].toLowerCase();
+                
+                // If no suffix, return the number directly
+                if (!suffix) {
+                    return number;
+                }
+                
+                // Get the standard suffix (uppercase) from the map
+                const standardSuffix = SUFFIX_MAP[suffix] || suffix.toUpperCase();
+                
+                // Get the multiplier from our shared NUMBER_SUFFIXES object
+                const multiplier = NUMBER_SUFFIXES[standardSuffix] || 1;
+                
+                return number * multiplier;
+            }
+            
+            // Make t() function available globally for developers
+            window.t = t;
+            
+            // Upgrades available for purchase
+            let upgrades = [
+                { id: 1, cpc_change: 1, cps_change: 0, text: '1 cpc_0 cps', cost: t('30'), multiplier: 1.761, factory: false },
+                { id: 2, cpc_change: 0, cps_change: 1, text: '0 cpc_1 cps', cost: t('250'), multiplier: 1.496, factory: false },
+                { id: 3, cpc_change: 5, cps_change: 0, text: '5 cpc_0 cps', cost: t('1k'), multiplier: 1.623, factory: false },
+                { id: 4, cpc_change: 10, cps_change: 10, text: '10 cpc_10 cps', cost: t('5k'), multiplier: 1.942, factory: false },
+                { id: 5, cpc_change: 10, cps_change: 50, text: '10 cpc_50 cps', cost: t('25k'), multiplier: 1.279, factory: false },
+                { id: 6, cpc_change: 45, cps_change: 15, text: '45 cpc_15 cps', cost: t('87.5k'), multiplier: 1.385, factory: false },
+                { id: 7, cpc_change: 75, cps_change: 75, text: '75 cpc_75 cps', cost: t('135k'), multiplier: 1.531, factory: false },
+                { id: 8, cpc_change: 500, cps_change: 0, text: '500 cpc_0 cps', cost: t('450k'), multiplier: 1.234, factory: false },
+                { id: 9, cpc_change: 0, cps_change: 500, text: '0 cpc_500 cps', cost: t('500k'), multiplier: 1.234, factory: false },
+                { id: 10, cpc_change: 750, cps_change: 750, text: '750 cpc_750 cps', cost: t('2m'), multiplier: 1.502, factory: false },
+                { id: 12, cpc_change: t('1'), cps_change: t('0'), text: '1 cpc/s_0 cps/s', cost: t('7.5m'), multiplier: 1.462, factory: true },
+
+            ];
+            // Track how many of each upgrade has been purchased
+            let purchasedUpgrades = {};
+            
+            // Make t() function available globally for developers
+            window.t = t;
+            
+            // Number formatter function
+            function formatNumber(num) {
+                // Handle edge cases
+                if (num === 0) return '0';
+                if (num < 0) return '-' + formatNumber(-num);
+                
+                // Find the appropriate suffix
+                let suffix = '';
+                let value = 1;
+                
+                // Use our shared NUMBER_SUFFIXES object
+                for (const [s, v] of Object.entries(NUMBER_SUFFIXES)) {
+                    if (num >= v) {
+                        suffix = s;
+                        value = v;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Format the number with 1 decimal place, removing trailing zeros
+                const formatted = (num / value).toFixed(1).replace(/\.0$/, '');
+                return formatted + suffix;
+            }
+            
+            // functions
+            function id(id) {
+                return document.getElementById(id);
+            }
+
+            function updateHTML() {
+                id('clickCounter').textContent = 'clicks: ' + formatNumber(clicks);
+                id('clicksPerClick').textContent = 'cpc: ' + formatNumber(cpc);
+                id('clicksPerSecond').textContent = 'cps: ' + formatNumber(cps);
+            }
+
+            // This is handled by the updateCPS function below, so we can remove this duplicate
+
+            function updateConfig() {
+                id('clickBTN').style.width = btnSize + 'px';
+                id('clickBTN').style.height = btnSize + 'px';
+                // No need to set IMG dimensions - CSS handles that now
+            }
+
+            function updateClicks() {
+                // Track if spacebar is currently pressed down
+                let spacePressed = false;
+                
+                id('clickBTN').addEventListener('click', function() {
+                    clicks += cpc;
+                    updateHTML();
+                });
+                
+                // Handle key press
+                document.addEventListener('keydown', function(e) {
+                    // Only trigger if space is pressed AND wasn't already pressed (prevent holding)
+                    if((e.key === ' ' || e.code === 'Space') && !spacePressed) {
+                        spacePressed = true; // Mark as pressed
+                        clicks += cpc;
+                        updateHTML();
+                    }
+                }); 
+                
+                // Handle key release
+                document.addEventListener('keyup', function(e) {
+                    // When space is released, reset the flag so it can be pressed again
+                    if(e.key === ' ' || e.code === 'Space') {
+                        spacePressed = false;
+                    }
+                });
+                
+                // Create initial upgrade buttons
+                createAllUpgradeButtons();
+            }
+            
+            // Function to create buttons for all upgrades
+            function createAllUpgradeButtons() {
+                const container = id('upgrade-container');
+                container.innerHTML = '';
+                
+                let topPosition = 0;
+                const buttonHeight = 150;
+                const buttonGap = 10;
+                
+                for (let i = 0; i < upgrades.length; i++) {
+                    const upgradeButton = document.createElement('button');
+                    upgradeButton.className = 'upgrade-button';
+                    upgradeButton.style.top = topPosition + 'px';
+                    
+                    const displayText = upgrades[i].text.replace('_', '<br>');
+                    upgradeButton.innerHTML = displayText;
+                    
+                    const textLength = upgrades[i].text.length;
+                    if (textLength < 10) {
+                        upgradeButton.classList.add('text-xl');
+                    } else if (textLength < 15) {
+                        upgradeButton.classList.add('text-lg');
+                    } else if (textLength < 20) {
+                        upgradeButton.classList.add('text-md');
+                    } else if (textLength < 30) {
+                        upgradeButton.classList.add('text-sm');
+                    } else {
+                        upgradeButton.classList.add('text-xs');
+                    }
+                    
+                    upgradeButton.dataset.upgradeId = i;
+                    
+                    upgradeButton.addEventListener('click', function() {
+                        buyUpgrade(i);
+                    });
+                    
+                    const costLabel = document.createElement('h3');
+                    costLabel.className = 'upgrade-cost';
+                    costLabel.style.top = (topPosition + 75) + 'px';
+                    costLabel.textContent = `Cost: ${formatNumber(upgrades[i].cost)}`;
+                    costLabel.id = `upgrade-cost-${i}`;
+                    
+                    container.appendChild(upgradeButton);
+                    container.appendChild(costLabel);
+                    
+                    topPosition += (buttonHeight + buttonGap);
+                }
+            }
+            
+            // Function to handle buying upgrades
+            function buyUpgrade(upgradeIndex) {
+                const upgrade = upgrades[upgradeIndex];
+                
+                if (clicks >= upgrade.cost) {
+                    // Check if it's a factory upgrade
+                    if (upgrade.factory) {
+                        // Update cpcPERsec and cpsPERsec for factories
+                        cpcPERsec += upgrade.cpc_change;
+                        cpsPERsec += upgrade.cps_change;
+                    } else {
+                        // Update cpc and cps for regular upgrades
+                        cpc += upgrade.cpc_change;
+                        cps += upgrade.cps_change;
+                    }
+                    
+                    clicks -= upgrade.cost;
+                    
+                    if (!purchasedUpgrades[upgradeIndex]) {
+                        purchasedUpgrades[upgradeIndex] = 0;
+                    }
+                    purchasedUpgrades[upgradeIndex]++;
+                    
+                    upgrade.cost = Math.round(upgrade.cost * upgrade.multiplier);
+                    
+                    updateHTML();
+                    updateUpgradeDisplay(upgradeIndex);
+                } else {
+                    alert('Not enough clicks to buy this upgrade!');
+                }
+            }
+            
+            // Function to update just one upgrade button's display
+            function updateUpgradeDisplay(upgradeIndex) {
+                const upgrade = upgrades[upgradeIndex];
+                const costLabel = id(`upgrade-cost-${upgradeIndex}`);
+                costLabel.textContent = `Cost: ${formatNumber(upgrade.cost)}`;
+            }
+            
+            // Variables to track tab visibility and last update time
+            let lastUpdateTime = Date.now();
+            
+            function updateCPS() {
+                // Store the initial timestamp when the game starts
+                lastUpdateTime = Date.now();
+                
+                // Set up interval to run every second
+                setInterval(function() {
+                    // Current time to calculate elapsed time
+                    const now = Date.now();
+                    const elapsedSeconds = Math.floor((now - lastUpdateTime) / 1000);
+                    
+                    // Only process if some time has passed (should always be at least 1 second)
+                    if (elapsedSeconds >= 1) {
+                        // Check if we have any CPS or factory effects active
+                        if (cps > 0 || cpcPERsec > 0 || cpsPERsec > 0) {
+                            // Apply CPS effect - multiply by elapsed seconds to account for time in background
+                            if (cps > 0) {
+                                clicks += cps * elapsedSeconds;
+                            }
+                            
+                            // Apply factory effects - multiply by elapsed seconds to account for time in background
+                            if (cpcPERsec > 0) {
+                                cpc += cpcPERsec * elapsedSeconds;
+                            }
+                            
+                            if (cpsPERsec > 0) {
+                                cps += cpsPERsec * elapsedSeconds;
+                            }
+                            
+                            updateHTML();
+                        }
+                        
+                        // Update the last update time to current time
+                        lastUpdateTime = now;
+                    }
+                }, 1000); // Still run every second, but account for elapsed time when tab is inactive
+            }
+            
+            // Add focus event listener to update the game state when returning to the tab
+            window.addEventListener('focus', function() {
+                // When returning to the tab, force an immediate update based on time passed
+                const now = Date.now();
+                const elapsedSeconds = Math.floor((now - lastUpdateTime) / 1000);
+                
+                if (elapsedSeconds > 1) {
+                    // Process the elapsed time for offline earnings
+                    if (cps > 0) {
+                        clicks += cps * elapsedSeconds;
+                    }
+                    
+                    if (cpcPERsec > 0) {
+                        cpc += cpcPERsec * elapsedSeconds;
+                    }
+                    
+                    if (cpsPERsec > 0) {
+                        cps += cpsPERsec * elapsedSeconds;
+                    }
+                    
+                    updateHTML();
+                }
+                
+                // Reset the timer for future updates
+                lastUpdateTime = now;
+            });
+
+            function setMoney(amount) {
+                if (typeof amount === 'number' && !isNaN(amount)) {
+                    clicks = amount;
+                    updateHTML();
+                    console.log(`Money set to ${formatNumber(amount)} clicks`);
+                    return `Money set to ${formatNumber(amount)} clicks`;
+                } else {
+                    console.error('Please provide a valid number');
+                    return 'Error: Please provide a valid number';
+                }
+            }
+            
+            // Make the function available globally
+            window.setMoney = setMoney;
+            
+            function startGameWithAnimation() {
+                const splashScreen = document.getElementById('splash-screen');
+                const gameContainer = document.getElementById('game-container');
+                const loadingBarContainer = document.getElementById('loading-bar-container');
+                const loadingBar = document.getElementById('loading-bar');
+                const playButton = document.getElementById('play-button');
+                
+                playButton.style.display = 'none';
+                loadingBarContainer.style.display = 'block';
+                
+                // Start loading game data immediately after clicking play
+                // This happens in parallel with the loading animation
+                const savedData = localStorage.getItem('clickerGameSave');
+                if (savedData) {
+                    document.getElementById('saveDataDisplay').value = savedData;
+                } else {
+                    document.getElementById('saveDataDisplay').value = 'No saved data found';
+                }
+                
+                // Try to load saved game data
+                try {
+                    loadGame();
+                    console.log('Game data loaded during startup');
+                } catch (err) {
+                    console.error('Error loading game data:', err);
+                }
+                
+                // Setup auto-save
+                setupAutoSave();
+                
+                // Start the CPS timer
+                updateCPS();
+                
+                let startTime;
+                const duration = 500;
+                
+                function animateLoading(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const elapsed = timestamp - startTime;
+                    
+                    const progress = Math.min(elapsed / duration * 100, 100);
+                    loadingBar.style.width = progress + '%';
+                    
+                    if (progress < 100) {
+                        requestAnimationFrame(animateLoading);
+                    } else {
+                        splashScreen.style.opacity = '0';
+                        gameContainer.style.opacity = '1';
+                        gameContainer.style.pointerEvents = 'auto';
+                        
+                        setTimeout(() => {
+                            splashScreen.style.display = 'none';
+                        }, 500);
+                    }
+                }
+                
+                requestAnimationFrame(animateLoading);
+            }
+            
+            // Draggable slider functionality
+            function setupDragSlider() {
+                const dragger = document.getElementById('dragger');
+                const dragArea = document.getElementById('dragArea');
+                const sliderValue = document.getElementById('sliderValue');
+                let sliderPosition = 0; // Value between 0 and 100 representing position
+                let dragging = false;
+                
+                // Initialize dragger in the middle
+                updateDraggerPosition(50);
+                
+                // Update dragger position and calculated value
+                function updateDraggerPosition(percent) {
+                    sliderPosition = Math.min(100, Math.max(0, percent));
+                    
+                    const dragAreaRect = dragArea.getBoundingClientRect();
+                    const dragAreaHeight = dragAreaRect.height;
+                    const draggerHeight = dragger.offsetHeight;
+                    
+                    const usableHeight = dragAreaHeight - draggerHeight;
+                    
+                    const topPosition = dragAreaRect.top + (usableHeight) * (1 - sliderPosition/100);
+                    dragger.style.top = topPosition + 'px';
+                    
+                    const calculatedValue = Math.round(sliderPosition * sliderMultiplier);
+                    sliderValue.textContent = calculatedValue;
+                    sliderValue.style.top = topPosition + draggerHeight/2 + 'px';
+                    
+                    window.sliderValue = calculatedValue;
+                    
+                    moveUpgrades(sliderPosition);
+                    
+                    return calculatedValue;
+                }
+                
+                // Mouse event handlers
+                dragger.addEventListener('mousedown', function(e) {
+                    dragging = true;
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                    e.preventDefault(); // Prevent text selection
+                });
+                
+                dragArea.addEventListener('click', function(e) {
+                    const dragAreaRect = dragArea.getBoundingClientRect();
+                    const draggerHeight = dragger.offsetHeight;
+                    const usableHeight = dragAreaRect.height - draggerHeight;
+                    
+                    let clickPositionY = e.clientY - dragAreaRect.top;
+                    clickPositionY = Math.max(0, Math.min(clickPositionY, usableHeight));
+                    
+                    const percent = 100 * (1 - clickPositionY / usableHeight);
+                    updateDraggerPosition(percent);
+                });
+                
+                function handleMouseMove(e) {
+                    if (!dragging) return;
+                    
+                    const dragAreaRect = dragArea.getBoundingClientRect();
+                    const draggerHeight = dragger.offsetHeight;
+                    const usableHeight = dragAreaRect.height - draggerHeight;
+                    
+                    let mousePositionRelative = e.clientY - dragAreaRect.top;
+                    mousePositionRelative = Math.min(usableHeight, Math.max(0, mousePositionRelative));
+                    const percent = 100 * (1 - mousePositionRelative / usableHeight);
+                    
+                    updateDraggerPosition(percent);
+                }
+                
+                function handleMouseUp() {
+                    dragging = false;
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                }
+                
+                function moveUpgrades(sliderPosition) {
+                    const upgradeContainer = document.getElementById('upgrade-container');
+                    
+                    const percentFromTop = 100 - sliderPosition;
+                    
+                    const pixelsToMove = (percentFromTop / 100) * window.innerHeight * 5;
+                    
+                    upgradeContainer.style.transform = `translateY(-${pixelsToMove}px)`;
+                    
+                    console.log(`Slider at: ${sliderPosition}%, Upgrades moved up: ${pixelsToMove}px`);
+                }
+                
+                // Make the slider value accessible globally
+                window.sliderValue = 50 * sliderMultiplier; // Initial value
+                window.updateDraggerPosition = updateDraggerPosition;
+                
+                // Set initial position - all the way at the top
+                updateDraggerPosition(100);
+            }
+            
+            // Custom encoding/decoding functions using provided character set
+            function encode(num) {
+                // Check for null or undefined - represent as '!'
+                if (num === null || num === undefined) return '!';
+                
+                // Define the character set
+                const chars = '134567890qwertyuiopasdfghjklzxcvbmQWERTYUIOPASDFGHJKLZXCVBNM';
+                
+                // Return the first character for zero
+                if (num === 0) return chars[0];
+                
+                // Convert to safe integer to handle large numbers
+                num = Math.floor(num);
+                const base = BigInt(chars.length); // Base is the length of our character set
+                
+                // For very large numbers, use BigInt
+                if (num > Number.MAX_SAFE_INTEGER) {
+                    let bigNum = BigInt(num);
+                    let result = '';
+                    
+                    while (bigNum > 0n) {
+                        result = chars[Number(bigNum % base)] + result;
+                        bigNum = bigNum / base; // Integer division in BigInt
+                    }
+                    
+                    return result;
+                } else {
+                    // Regular encoding for normal-sized numbers
+                    let result = '';
+                    const baseNum = chars.length;
+                    
+                    while (num > 0) {
+                        result = chars[num % baseNum] + result;
+                        num = Math.floor(num / baseNum);
+                    }
+                    
+                    return result;
+                }
+            }
+            
+            function decode(str) {
+                // Check for null marker
+                if (str === '!') return null;
+                
+                // Handle empty strings
+                if (!str || str === '') return 0;
+                
+                const chars = '134567890qwertyuiopasdfghjklzxcvbmQWERTYUIOPASDFGHJKLZXCVBNM';
+                const base = BigInt(chars.length);
+                let result = 0n; // Using BigInt for large numbers
+                
+                for (let i = 0; i < str.length; i++) {
+                    const char = str[i];
+                    const value = BigInt(chars.indexOf(char));
+                    if (value !== -1n) {
+                        result = result * base + value;
+                    }
+                }
+                
+                // Convert back to number (safe for reasonable game values)
+                return Number(result);
+            }
+            
+            // Save game function
+            function saveGame() {
+                try {
+                    // Create an array to hold all save data
+                    let saveData = [];
+                    
+                    // Add main game state - using ! for null/zero values if needed
+                    saveData.push(clicks > 0 ? encode(clicks) : '!');
+                    saveData.push(cpc > 1 ? encode(cpc) : '1'); // CPC starts at 1, so use '1' instead of '!'
+                    saveData.push(cps > 0 ? encode(cps) : '!');
+                    saveData.push(cpcPERsec > 0 ? encode(cpcPERsec) : '!');
+                    saveData.push(cpsPERsec > 0 ? encode(cpsPERsec) : '!');
+                    
+                    // Add upgrade amounts - using ! for upgrades not purchased
+                    for (let i = 0; i < upgrades.length; i++) {
+                        const amount = purchasedUpgrades[i] || 0;
+                        saveData.push(amount > 0 ? encode(amount) : '!');
+                    }
+                    
+                    // Join with semicolons to create the save string
+                    const saveString = saveData.join(';');
+                    
+                    // Save to localStorage
+                    localStorage.setItem('clickerGameSave', saveString);
+                    
+                    // Display save data in the textarea
+                    document.getElementById('saveDataDisplay').value = saveString;
+                    
+                    console.log('Game saved successfully!');
+                    console.log('Save data:', saveString);
+                    return 'Game saved successfully!';
+                } catch (error) {
+                    console.error('Error saving game:', error);
+                    return 'Error saving game: ' + error.message;
+                }
+            }
+            
+            // Load game function
+            function loadGame() {
+                try {
+                    const saveString = localStorage.getItem('clickerGameSave');
+                    
+                    if (!saveString) {
+                        console.log('No save found.');
+                        return 'No save found.';
+                    }
+                    
+                    const parts = saveString.split(';');
+                    
+                    // Make sure we have minimum required data
+                    if (parts.length < 5) {
+                        return 'Invalid save data - corrupted or old format';
+                    }
+                    
+                    // Load main game variables - handle ! markers
+                    clicks = parts[0] === '!' ? 0 : decode(parts[0]);
+                    cpc = parts[1] === '!' ? 1 : decode(parts[1]); // CPC defaults to 1
+                    cps = parts[2] === '!' ? 0 : decode(parts[2]);
+                    cpcPERsec = parts[3] === '!' ? 0 : decode(parts[3]);
+                    cpsPERsec = parts[4] === '!' ? 0 : decode(parts[4]);
+                    
+                    // Reset to base values before applying upgrades from purchases
+                    // This ensures we don't double-count upgrades
+                    cpc = 1; // Base value 
+                    cps = 0; // Base value
+                    cpcPERsec = 0;
+                    cpsPERsec = 0;
+                    
+                    // Clear purchased upgrades
+                    purchasedUpgrades = {};
+                    
+                    // Process upgrade purchases
+                    for (let i = 0; i < upgrades.length; i++) {
+                        // Calculate the index in the parts array (5 + upgrade index)
+                        const partIndex = 5 + i;
+                        
+                        // Check if we have data for this upgrade
+                        if (partIndex < parts.length) {
+                            // Skip upgrades marked with ! (not purchased)
+                            if (parts[partIndex] === '!') {
+                                continue;
+                            }
+                            
+                            const amount = decode(parts[partIndex]);
+                            
+                            // Only process positive amounts
+                            if (amount && amount > 0) {
+                                purchasedUpgrades[i] = amount;
+                                const upgrade = upgrades[i];
+                                
+                                // Apply effects based on purchase count
+                                if (upgrade.factory) {
+                                    cpcPERsec += upgrade.cpc_change * amount;
+                                    cpsPERsec += upgrade.cps_change * amount;
+                                } else {
+                                    cpc += upgrade.cpc_change * amount;
+                                    cps += upgrade.cps_change * amount;
+                                }
+                                
+                                // Recalculate current cost based on purchases
+                                let newCost = upgrade.cost; // Start with base cost
+                                for (let j = 0; j < amount; j++) {
+                                    newCost = Math.round(newCost * upgrade.multiplier);
+                                }
+                                upgrade.cost = newCost;
+                            }
+                        }
+                    }
+                    
+                    // Update display
+                    updateHTML();
+                    createAllUpgradeButtons(); // Recreate upgrade buttons with updated costs
+                    
+                    // Display loaded save data in the textarea
+                    document.getElementById('saveDataDisplay').value = saveString;
+                    
+                    console.log('Game loaded successfully!');
+                    return 'Game loaded successfully!';
+                } catch (error) {
+                    console.error('Error loading game:', error);
+                    return 'Error loading game: ' + error.message;
+                }
+            }
+            
+            // Function removed as requested by user
+            
+            // Auto-save functionality
+            function setupAutoSave() {
+                // Auto-save every minute
+                setInterval(function() {
+                    saveGame();
+                }, 60000); // 60,000 ms = 1 minute
+                
+                // Auto-save when the page is about to be unloaded (refresh/close/navigate away)
+                window.addEventListener('beforeunload', function() {
+                    saveGame();
+                    // Note: We don't show notification here because the page is unloading
+                });
+                
+                // Auto-save when the user clicks away from the page (loses focus)
+                window.addEventListener('blur', function() {
+                    saveGame();
+                });
+                
+                console.log('Auto-save system initialized: 1-minute interval + page events');
+            }
+            
+            // Reset save function - completely resets the game to initial state
+            function resetSave() {
+                try {
+                    // Clear localStorage
+                    localStorage.removeItem('clickerGameSave');
+                    
+                    // Reset all game variables to initial values
+                    clicks = 0;
+                    cpc = 1;
+                    cps = 0;
+                    cpcPERsec = 0;
+                    cpsPERsec = 0;
+                    
+                    // Reset purchased upgrades
+                    purchasedUpgrades = {};
+                    
+                    // Reset upgrade costs to their initial values
+                    upgrades = [
+                        { id: 1, cpc_change: 1, cps_change: 0, text: '1 cpc_0 cps', cost: t('30'), multiplier: 1.761, factory: false },
+                        { id: 2, cpc_change: 0, cps_change: 1, text: '0 cpc_1 cps', cost: t('250'), multiplier: 1.496, factory: false },
+                        { id: 3, cpc_change: 5, cps_change: 0, text: '5 cpc_0 cps', cost: t('1k'), multiplier: 1.623, factory: false },
+                        { id: 4, cpc_change: 10, cps_change: 10, text: '10 cpc_10 cps', cost: t('5k'), multiplier: 1.942, factory: false },
+                        { id: 5, cpc_change: 10, cps_change: 50, text: '10 cpc_50 cps', cost: t('25k'), multiplier: 1.279, factory: false },
+                        { id: 6, cpc_change: 45, cps_change: 15, text: '45 cpc_15 cps', cost: t('87.5k'), multiplier: 1.385, factory: false },
+                        { id: 7, cpc_change: 75, cps_change: 75, text: '75 cpc_75 cps', cost: t('135k'), multiplier: 1.531, factory: false },
+                        { id: 8, cpc_change: 500, cps_change: 0, text: '500 cpc_0 cps', cost: t('450k'), multiplier: 1.234, factory: false },
+                        { id: 9, cpc_change: 0, cps_change: 500, text: '0 cpc_500 cps', cost: t('500k'), multiplier: 1.234, factory: false },
+                        { id: 10, cpc_change: 750, cps_change: 750, text: '750 cpc_750 cps', cost: t('2m'), multiplier: 1.502, factory: false },
+                    ];
+                    
+                    // Update display
+                    updateHTML();
+                    createAllUpgradeButtons();
+                    
+                    // Clear the save data display
+                    document.getElementById('saveDataDisplay').value = 'Save data will appear here';
+                    
+                    console.log('Game reset successfully! All progress has been wiped.');
+                    return 'Game reset successfully! All progress has been wiped.';
+                } catch (error) {
+                    console.error('Error resetting game:', error);
+                    return 'Error resetting game: ' + error.message;
+                }
+            }
+            
+            // Debug function to examine save data
+            function debugSave() {
+                try {
+                    const saveString = localStorage.getItem('clickerGameSave');
+                    
+                    if (!saveString) {
+                        console.log('No save found.');
+                        return 'No save found.';
+                    }
+                    
+                    const parts = saveString.split(';');
+                    
+                    // Decoded main values
+                    const decodedData = {
+                        clicks: decode(parts[0]),
+                        cpc: decode(parts[1]),
+                        cps: decode(parts[2]),
+                        cpcPERsec: decode(parts[3]),
+                        cpsPERsec: decode(parts[4])
+                    };
+                    
+                    // Decode upgrade amounts
+                    const upgradeAmounts = {};
+                    for (let i = 0; i < upgrades.length; i++) {
+                        const partIndex = 5 + i;
+                        if (partIndex < parts.length) {
+                            const amount = decode(parts[partIndex]);
+                            if (amount && amount > 0) {
+                                upgradeAmounts[i] = amount;
+                            }
+                        }
+                    }
+                    
+                    // Get current upgrade costs
+                    const upgradeCosts = {};
+                    for (let i = 0; i < upgrades.length; i++) {
+                        upgradeCosts[i] = upgrades[i].cost;
+                    }
+                    
+                    // Log debug info
+                    console.log('Raw save string:', saveString);
+                    console.log('Decoded main values:', decodedData);
+                    console.log('Upgrade amounts:', upgradeAmounts);
+                    console.log('Current upgrade costs:', upgradeCosts);
+                    
+                    // Display more detailed debug info in the textarea
+                    let debugDisplay = `Save String: ${saveString}\n\n`;
+                    debugDisplay += `Format: [clicks];[cpc];[cps];[cpcPerSec];[cpsPerSec];[upgrade1];[upgrade2];...\n\n`;
+                    debugDisplay += `Game State:\n`;
+                    debugDisplay += `- Clicks: ${decodedData.clicks}\n`;
+                    debugDisplay += `- CPC: ${decodedData.cpc}\n`;
+                    debugDisplay += `- CPS: ${decodedData.cps}\n`;
+                    debugDisplay += `- CPC/sec: ${decodedData.cpcPERsec}\n`;
+                    debugDisplay += `- CPS/sec: ${decodedData.cpsPERsec}\n\n`;
+                    debugDisplay += `Purchased Upgrades: ${Object.entries(upgradeAmounts).length ? Object.entries(upgradeAmounts).map(([id, count]) => `#${id}:${count}`).join(', ') : 'None'}`;
+                    
+                    document.getElementById('saveDataDisplay').value = debugDisplay;
+                    
+                    return 'Debug info displayed and logged to console. Press F12 for more details.';
+                } catch (error) {
+                    console.error('Debug error:', error);
+                    return 'Debug error: ' + error.message;
+                }
+            }
+            
+            // Function to set the data string in the textarea via console
+            function setDataString(string) {
+                if (typeof string !== 'string') {
+                    console.error('Please provide a valid string parameter');
+                    return 'Error: Parameter must be a string';
+                }
+                
+                document.getElementById('saveDataDisplay').value = string;
+                console.log('Data string updated in the textarea');
+                return 'Data string updated in the textarea';
+            }
+            
+            // Function to reset the textarea content and localStorage to default
+            function resetDataString() {
+                // Clear the textarea
+                document.getElementById('saveDataDisplay').value = 'Save data will appear here';
+                
+                // Clear the localStorage
+                localStorage.removeItem('clickerGameSave');
+                
+                console.log('Data string and localStorage reset to default');
+                return 'Data string and localStorage reset to default. Game state will be reset on next load.';
+            }
+            
+            // Make functions available globally
+            window.saveGame = saveGame;
+            window.loadGame = loadGame;
+            window.debugSave = debugSave;
+            window.resetSave = resetSave;
+            window.setDataString = setDataString;
+            window.resetDataString = resetDataString;
+            
+            // Fullscreen toggle functionality
+            function toggleFullScreen() {
+                if (!document.fullscreenElement) {
+                    // Go fullscreen
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    } else if (document.documentElement.mozRequestFullScreen) { // Firefox
+                        document.documentElement.mozRequestFullScreen();
+                    } else if (document.documentElement.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                        document.documentElement.webkitRequestFullscreen();
+                    } else if (document.documentElement.msRequestFullscreen) { // IE/Edge
+                        document.documentElement.msRequestFullscreen();
+                    }
+                    document.getElementById('fullscreen-button').innerHTML = '<span style="display: inline-block; margin-right: 15px; font-size: 30px;">⛶</span> EXIT FULLSCREEN';
+                } else {
+                    // Exit fullscreen
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.mozCancelFullScreen) { // Firefox
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) { // Chrome, Safari and Opera
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) { // IE/Edge
+                        document.msExitFullscreen();
+                    }
+                    document.getElementById('fullscreen-button').innerHTML = '<span style="display: inline-block; margin-right: 15px; font-size: 30px;">⛶</span> FULLSCREEN';
+                }
+            }
+            
+            // Monitor fullscreen changes
+            document.addEventListener('fullscreenchange', updateFullscreenButtonText);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenButtonText);
+            document.addEventListener('mozfullscreenchange', updateFullscreenButtonText);
+            document.addEventListener('MSFullscreenChange', updateFullscreenButtonText);
+            
+            function updateFullscreenButtonText() {
+                const button = document.getElementById('fullscreen-button');
+                if (document.fullscreenElement || 
+                    document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || 
+                    document.msFullscreenElement) {
+                    button.innerHTML = '<span style="display: inline-block; margin-right: 15px; font-size: 30px;">⛶</span> EXIT FULLSCREEN';
+                } else {
+                    button.innerHTML = '<span style="display: inline-block; margin-right: 15px; font-size: 30px;">⛶</span> FULLSCREEN';
+                }
+            }
+            
+            window.onload = function() {
+                document.getElementById('play-button').addEventListener('click', startGameWithAnimation);
+                document.getElementById('fullscreen-button').addEventListener('click', toggleFullScreen);
+                
+                // Add event listeners for save/load buttons
+                document.getElementById('saveButton').addEventListener('click', function() {
+                    saveGame();
+                });
+                
+                document.getElementById('loadButton').addEventListener('click', function() {
+                    // Get data from the textarea instead of localStorage
+                    const textareaData = document.getElementById('saveDataDisplay').value;
+                    
+                    if (textareaData && textareaData.trim() !== '' && textareaData !== 'Save data will appear here') {
+                        if (confirm('Do you want to load the data from the textarea? This will overwrite your current game progress.')) {
+                            // Store the textarea data in localStorage temporarily
+                            localStorage.setItem('clickerGameSave', textareaData);
+                            // Then load the game from localStorage (using the existing function)
+                            loadGame();
+                        }
+                    } else {
+                        alert('No valid data found in the textarea.');
+                    }
+                });
+                
+                document.getElementById('resetButton').addEventListener('click', function() {
+                    // Confirm before resetting
+                    if (confirm('Are you sure you want to reset all progress? This cannot be undone!')) {
+                        resetSave();
+                    }
+                });
+                
+                document.getElementById('debugButton').addEventListener('click', function() {
+                    debugSave();
+                });
+                
+                updateConfig();
+                updateHTML();
+                updateClicks();
+                setupDragSlider();
+                
+                document.getElementById('game-container').addEventListener('transitionend', function(e) {
+                    if (e.propertyName === 'opacity' && this.style.opacity === '1') {
+                        console.log('Game initialized. Available commands: setMoney(amount), saveGame(), loadGame(), setDataString(string), resetDataString()');
+                    }
+                });
+            };
+        </script>
+    </body>
+</html>
