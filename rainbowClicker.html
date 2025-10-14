@@ -228,6 +228,10 @@
             <h1 id='clicksPerClick'>cpc: 1</h1>
             <h1 id='clicksPerSecond'>cps: 0</h1>
             
+            <!-- CPC/s and CPS/s display at the bottom -->
+            <h1 id="showClickPerSec" style="position: absolute; bottom: 10%; left: 30%; transform: translate(-50%, -50%); color: whitesmoke; font-size: 30px;">cpc / s: 0</h1>
+            <h1 id="showCpsPerSec" style="position: absolute; bottom: 10%; left: 70%; transform: translate(-50%, -50%); color: whitesmoke; font-size: 30px;">cps / s: 0</h1>
+            
             <!-- Save/Load buttons (Bottom Left) -->
             <div style="position: absolute; bottom: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px;">
                 <button id="saveButton" style="padding: 8px 15px; background: linear-gradient(145deg, #33ff66, #00cc33); border: none; color: white; font-weight: bold; border-radius: 5px; cursor: pointer;">SAVE GAME</button>
@@ -339,7 +343,10 @@
                 { id: 17, cpc_change: 50, cps_change: 50, text: '50 cps/s_50 cpc/s', cost: t('250m'), multiplier: 1.623, factory: true },
                 { id: 18, cpc_change: 85, cps_change: 10, text: '85 cpc/s_10 cps/', cost: t('1b'), multiplier: 1.234, factory: true },
                 { id: 19, cpc_change: 0, cps_change: 100, text: '0 cpc/s_100 cps/s', cost: t('5b'), multiplier: 1.534, factory: true },
-                { id: 20, cpc_change: 125, cps_change: 125, text: '125 cpc/s_125 cps/s', cost: t('25b'), multiplier: 1.434, factory: true }
+                { id: 20, cpc_change: 125, cps_change: 125, text: '125 cpc/s_125 cps/s', cost: t('25b'), multiplier: 1.434, factory: true },
+                { id: 21, cpc_change: t('250k'), cps_change: 0, text: '250K cpc_0 cps', cost: t('70b'), multiplier: 1.395, factory: false },
+                { id: 22, cpc_change: 0, cps_change: t('250k'), text: '0 cpc/s_250K cps/s', cost: t('85b'), multiplier: 1.334, factory: false },
+                { id: 23, cpc_change: 350, cps_change: 0, text: '350 cpc/s_0 cps/s', cost: t('125b'), multiplier: 1.234, factory: true }
             ];
             // Track how many of each upgrade has been purchased
             let purchasedUpgrades = {};
@@ -381,6 +388,8 @@
                 id('clickCounter').textContent = 'clicks: ' + formatNumber(clicks);
                 id('clicksPerClick').textContent = 'cpc: ' + formatNumber(cpc);
                 id('clicksPerSecond').textContent = 'cps: ' + formatNumber(cps);
+                id("showClickPerSec").textContent = "cpc / s: " + formatNumber(cpcPERsec);
+                id("showCpsPerSec").textContent = "cps / s: " + formatNumber(cpsPERsec);
             }
 
             // This is handled by the updateCPS function below, so we can remove this duplicate
@@ -869,11 +878,15 @@
                     cps = parts[2] === '!' ? 0 : decode(parts[2]);
                     cpcPERsec = parts[3] === '!' ? 0 : decode(parts[3]);
                     cpsPERsec = parts[4] === '!' ? 0 : decode(parts[4]);
+                    // Store the loaded values so they don047t get recalculated
+                    const loadedCpc = cpc;
+                    const loadedCps = cps;
+                    const loadedCpcPerSec = cpcPERsec;
+                    const loadedCpsPerSec = cpsPERsec;
                     
-                    // Reset to base values before applying upgrades from purchases
-                    // This ensures we don't double-count upgrades
-                    cpc = 1; // Base value 
-                    cps = 0; // Base value
+                    // Temporarily reset to calculate costs properly
+                    cpc = 1;
+                    cps = 0;
                     cpcPERsec = 0;
                     cpsPERsec = 0;
                     
@@ -918,6 +931,11 @@
                         }
                     }
                     
+                    // Restore the actual saved values instead of recalculated ones
+                    cpc = loadedCpc;
+                    cps = loadedCps;
+                    cpcPERsec = loadedCpcPerSec;
+                    cpsPERsec = loadedCpsPerSec;
                     // Update display
                     updateHTML();
                     createAllUpgradeButtons(); // Recreate upgrade buttons with updated costs
