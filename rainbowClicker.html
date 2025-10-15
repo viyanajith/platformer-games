@@ -257,6 +257,7 @@
             // config
             const btnSize = 250;
             const sliderMultiplier = 5; // This is the multiplier for the dragger position value (y*sliderMultiplier)
+            const mousewheelSpeed = .25; // Amount of change to the slider position per mousewheel scroll (per 33ms)
             
             // Define a shared suffixes object to be used by both t() and formatNumber functions
             const NUMBER_SUFFIXES = {
@@ -346,7 +347,11 @@
                 { id: 20, cpc_change: 125, cps_change: 125, text: '125 cpc/s_125 cps/s', cost: t('25b'), multiplier: 1.434, factory: true },
                 { id: 21, cpc_change: t('250k'), cps_change: 0, text: '250K cpc_0 cps', cost: t('70b'), multiplier: 1.395, factory: false },
                 { id: 22, cpc_change: 0, cps_change: t('250k'), text: '0 cpc/s_250K cps/s', cost: t('85b'), multiplier: 1.334, factory: false },
-                { id: 23, cpc_change: 350, cps_change: 0, text: '350 cpc/s_0 cps/s', cost: t('125b'), multiplier: 1.234, factory: true }
+                { id: 23, cpc_change: 350, cps_change: 0, text: '350 cpc/s_0 cps/s', cost: t('125b'), multiplier: 1.234, factory: true },
+                { id: 24, cpc_change: 0, cps_change: 350, text: '0 cpc/s_350 cps/s', cost: t('150b'), multiplier: 1.234, factory: true },
+                { id: 25, cpc_change: 500, cps_change: 500, text: '500 cpc/s_500 cps/s', cost: t('500b'), multiplier: 1.234, factory: true },
+                { id: 26, cpc_change: t('1k'), cps_change: 0, text: '1K cpc/s_0 cps/s', cost: t('2.5t'), multiplier: 1.234, factory: false },
+                { id: 27, cpc_change: 0, cps_change: t('1k'), text: '0 cpc/s_1K cps/s', cost: t('3t'), multiplier: 1.334, factory: false },
             ];
             // Track how many of each upgrade has been purchased
             let purchasedUpgrades = {};
@@ -665,6 +670,7 @@
                 const dragger = document.getElementById('dragger');
                 const dragArea = document.getElementById('dragArea');
                 const sliderValue = document.getElementById('sliderValue');
+                const upgradeContainer = document.getElementById('upgrade-container');
                 let sliderPosition = 0; // Value between 0 and 100 representing position
                 let dragging = false;
                 
@@ -750,6 +756,65 @@
                 // Make the slider value accessible globally
                 window.sliderValue = 50 * sliderMultiplier; // Initial value
                 window.updateDraggerPosition = updateDraggerPosition;
+                
+                // Variables for smooth mousewheel scrolling
+                let scrollAnimation = null;
+                let scrollVelocity = 0;
+                let lastScrollTime = 0;
+                
+                // Add mousewheel functionality to the entire right area
+                document.addEventListener('wheel', function(e) {
+                    // Check if mouse is in the right area (right of dragArea)
+                    const dragAreaRect = dragArea.getBoundingClientRect();
+                    const mouseX = e.clientX;
+                    
+                    // If mouse is to the right of the dragArea, handle the scroll
+                    if (mouseX > dragAreaRect.right) {
+                        e.preventDefault(); // Prevent default page scrolling
+                        
+                        // Stop any existing animation
+                        if (scrollAnimation) {
+                            cancelAnimationFrame(scrollAnimation);
+                            scrollAnimation = null;
+                        }
+                        
+                        // Set scroll velocity based on wheel direction
+                        scrollVelocity = e.deltaY > 0 ? -mousewheelSpeed : mousewheelSpeed;
+                        lastScrollTime = performance.now();
+                        
+                        // Start smooth scrolling animation
+                        function smoothScroll() {
+                            const currentTime = performance.now();
+                            const deltaTime = currentTime - lastScrollTime;
+                            
+                            // Stop if no recent wheel events (wheel released)
+                            if (deltaTime > 100) { // 100ms timeout
+                                scrollVelocity = 0;
+                                scrollAnimation = null;
+                                return;
+                            }
+                            
+                            // Apply scroll movement
+                            if (Math.abs(scrollVelocity) > 0.01) {
+                                const newSliderPosition = Math.max(0, Math.min(100, sliderPosition + scrollVelocity));
+                                updateDraggerPosition(newSliderPosition);
+                                
+                                // Continue animation
+                                scrollAnimation = requestAnimationFrame(smoothScroll);
+                            } else {
+                                scrollAnimation = null;
+                            }
+                        }
+                        
+                        // Start the animation if not already running
+                        if (!scrollAnimation) {
+                            scrollAnimation = requestAnimationFrame(smoothScroll);
+                        }
+                        
+                        // Update last scroll time
+                        lastScrollTime = currentTime;
+                    }
+                }, { passive: false });
                 
                 // Set initial position - all the way at the top
                 updateDraggerPosition(100);
